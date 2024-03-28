@@ -147,7 +147,7 @@ df_repo_language
 
 
 
-# retrieve the number of views and stars of the github repository for the last 7 day
+# retrieve the number of views and stars of the github repository for the last 7 days
 def get_repo_views_stars(username, token):
     # Get list of repositories
     repos_response = requests.get(f'https://api.github.com/users/{username}/repos', auth=(username, token))
