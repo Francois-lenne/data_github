@@ -10,35 +10,6 @@ import pandas as pd
 
 
 
-# credentials informations
-username = 'Francois-lenne'
-token = os.getenv('GITHUB_TOKEN')
-
-
-
-
-# retrieve all the repo and the languages used in the github repository
-
-
-def language_repo(username, token):
-    repos_response = requests.get(f'https://api.github.com/users/{username}/repos', auth=(username, token))
-    repos = repos_response.json()
-
-    for repo in repos:
-        # Skip forked repositories
-        if repo['fork']:
-            continue
-
-        repo_name = repo['name']
-        
-        # Get repository languages
-        languages_response = requests.get(f'https://api.github.com/repos/{username}/{repo_name}/languages', auth=(username, token))
-        languages = languages_response.json()
-        
-        print(f'Repo: {repo_name}, Languages: {", ".join(languages.keys())}')
-
-
-
 
 def get_commit_stats(username, token):
     # Create a session to handle retries
@@ -96,7 +67,6 @@ def get_commit_stats(username, token):
     return df_delete_add
 
 
-df_delete_add = get_commit_stats(username, token)
 
 
 
@@ -135,12 +105,6 @@ def get_repo_languages(username, token):
 
 
 
-df_repo_language = get_repo_languages(username, token)
-
-
-
-df_repo_language
-
 
 
 
@@ -178,3 +142,59 @@ def get_repo_views_stars(username, token):
     df_view_star = pd.DataFrame(data, columns=['Repo', 'Stars', 'Date', 'Views'])
     return df_view_star
 
+
+
+
+
+# function to retrieve collaborator and author of the repo 
+
+
+def get_author_repo_collaborators(username, token):
+    # Get list of repositories
+    repos_response = requests.get(f'https://api.github.com/users/{username}/repos', auth=(username, token))
+    repos = repos_response.json()
+
+    data = []
+
+    for repo in repos:
+        # Skip forked repositories
+        if repo['fork']:
+            continue
+
+        repo_name = repo['name']
+        author_name = repo['owner']['login']
+        
+        # Get list of collaborators
+        collaborators_response = requests.get(f'https://api.github.com/repos/{username}/{repo_name}/collaborators', auth=(username, token))
+        collaborators = collaborators_response.json()
+        collaborators_names = [collaborator['login'] for collaborator in collaborators]
+        
+        data.append([author_name, repo_name, collaborators_names])
+
+    df_author_repo_collaborators = pd.DataFrame(data, columns=['Author', 'Repo', 'Collaborators'])
+    return df_author_repo_collaborators
+
+
+
+# main function to call all the functions above
+
+
+def main():
+    username = 'Francois-lenne'
+    token = os.getenv('GITHUB_TOKEN')
+
+    df_delete_add = get_commit_stats(username, token)
+    df_repo_language = get_repo_languages(username, token)
+    df_view_star = get_repo_views_stars(username, token)
+    df_author_repo_collaborators = get_author_repo_collaborators(username, token)
+
+
+
+
+    return "Success"
+
+
+
+
+if __name__ == "__main__":
+    main()
