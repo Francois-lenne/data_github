@@ -97,3 +97,46 @@ def get_commit_stats(username, token):
 
 
 df_delete_add = get_commit_stats(username, token)
+
+
+
+
+
+
+
+# retrieve all the repo and the languages used in the github repository
+
+
+def get_repo_languages(username, token):
+    # Get list of repositories
+    repos_response = requests.get(f'https://api.github.com/users/{username}/repos', auth=(username, token))
+    repos = repos_response.json()
+
+    data = []
+
+    for repo in repos:
+        # Skip forked repositories
+        if repo['fork']:
+            continue
+
+        repo_name = repo['name']
+        
+        # Get repository languages
+        languages_response = requests.get(f'https://api.github.com/repos/{username}/{repo_name}/languages', auth=(username, token))
+        languages = languages_response.json()
+        
+        data.append([repo_name, ", ".join(languages.keys())])
+
+    df_repo_language = pd.DataFrame(data, columns=['Repo', 'Languages'])
+
+    df_repo_language['Languages'] = df_repo_language['Languages'].apply(lambda x: x.split(', ')) # transform the string of languages into a list of languages
+    return df_repo_language
+
+
+
+
+df_repo_language = get_repo_languages(username, token)
+
+
+
+df_repo_language
