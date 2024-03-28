@@ -140,3 +140,41 @@ df_repo_language = get_repo_languages(username, token)
 
 
 df_repo_language
+
+
+
+
+
+
+
+# retrieve the number of views and stars of the github repository for the last 7 day
+def get_repo_views_stars(username, token):
+    # Get list of repositories
+    repos_response = requests.get(f'https://api.github.com/users/{username}/repos', auth=(username, token))
+    repos = repos_response.json()
+
+    data = []
+
+    for repo in repos:
+        # Skip forked repositories
+        if repo['fork']:
+            continue
+
+        repo_name = repo['name']
+        
+        # Get repository traffic views
+        views_response = requests.get(f'https://api.github.com/repos/{username}/{repo_name}/traffic/views', auth=(username, token))
+        views_data = views_response.json()
+        
+        # Get repository stars
+        stars = repo['stargazers_count']
+        
+        # Get views per day
+        for view in views_data['views']:
+            view_date = datetime.strptime(view['timestamp'], '%Y-%m-%dT%H:%M:%SZ')
+            if view_date >= datetime.now() - timedelta(days=7):  # only include views from the last 7 days
+                data.append([repo_name, stars, view['timestamp'], view['count']])
+
+    df_view_star = pd.DataFrame(data, columns=['Repo', 'Stars', 'Date', 'Views'])
+    return df_view_star
+
