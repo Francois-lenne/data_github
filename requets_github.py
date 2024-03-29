@@ -60,7 +60,7 @@ def get_commit_stats(username, token):
                 commit_response = session.get(commit['url'], auth=(username, token))
                 stats = commit_response.json().get('stats', {})
                 lines_added += stats.get('additions', 0)
-                lines_deleted += stats.get('deletions', 0)
+                lines_deleted -= stats.get('deletions', 0)
             data.append([repo_name, date.strftime("%Y-%m-%d"), num_commits, lines_added, lines_deleted])
             date += timedelta(days=1)  # move to next day
 
@@ -138,7 +138,7 @@ def get_repo_views_stars(username, token):
         for view in views_data['views']:
             view_date = datetime.strptime(view['timestamp'], '%Y-%m-%dT%H:%M:%SZ')
             if view_date >= datetime.now() - timedelta(days=7):  # only include views from the last 7 days
-                data.append([repo_name, stars, view['timestamp'], view['count']])
+                data.append([repo_name, stars, view_date.strftime("%Y-%m-%d"), view['count']])
 
     df_view_star = pd.DataFrame(data, columns=['Repo', 'Stars', 'Date', 'Views'])
     return df_view_star
@@ -192,8 +192,8 @@ def main():
     print(df_delete_add_line)
     df_repo_language = get_repo_languages(username, token)
     print(df_repo_language)
-    df_view_star = get_repo_views_stars(username, token)
-    print(df_view_star)
+    df_view_star_date = get_repo_views_stars(username, token)
+    print(df_view_star_date)
     df_author_repo_collaborators = get_author_repo_collaborators(username, token)
     print(df_author_repo_collaborators)
 
@@ -219,8 +219,19 @@ def main():
 
 
 
-    pr.connect_to_redshift(dbname='dbname', host='host', port='port', user='user', password='password')
-    pr.connect_to_s3(bucket='bucket', subdirectory='subdirectory', aws_access_key_id='aws_access_key_id', aws_secret_access_key = "rrr")
+    pr.connect_to_redshift(dbname=dbname, host=host, port=port, user=user, password=password)
+    pr.connect_to_s3(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, bucket=bucket, subdirectory=subdirectory)
+
+
+
+    # Load the data into the redshift database
+
+
+    ## load the data into the redshift database for the stat repo
+    pr.pandas_to_redshift(data_frame=df_delete_add_line, redshift_table_name='stat_commit_repo', append=True)
+
+    ## load the data into the redshift database for the repo stat by date 
+    pr.pandas_to_redshift(data_frame=df_view_star_date, redshift_table_name='stat_repo_by_date', append=True)
 
 
 
