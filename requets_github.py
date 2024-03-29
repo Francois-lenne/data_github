@@ -99,8 +99,7 @@ def get_repo_languages(username, token):
         data.append([repo_name, ", ".join(languages.keys())])
 
     df_repo_language = pd.DataFrame(data, columns=['Repo', 'Languages'])
-
-    df_repo_language['Languages'] = df_repo_language['Languages'].apply(lambda x: x.split(', ')) # transform the string of languages into a list of languages
+    
     return df_repo_language
 
 
@@ -170,10 +169,53 @@ def get_author_repo_collaborators(username, token):
         collaborators = collaborators_response.json()
         collaborators_names = [collaborator['login'] for collaborator in collaborators]
         
-        data.append([author_name, repo_name, collaborators_names])
+        # Convert list of collaborators to a string with each name separated by a comma
+        collaborators_string = ', '.join(collaborators_names)
+        
+        data.append([author_name, repo_name, collaborators_string])
 
     df_author_repo_collaborators = pd.DataFrame(data, columns=['Author', 'Repo', 'Collaborators'])
     return df_author_repo_collaborators
+
+
+
+
+# join and retrieve the global data of view and stars of the repo since the beginning of the repo
+
+
+def merge_and_add_info(username, token, df_repo_language, df_author_repo_collaborators):
+    # Merge the dataframes
+    merged_df = df_repo_language.merge(df_author_repo_collaborators, on='Repo')
+
+    # Initialize lists to store views and stars
+    views = []
+    stars = []
+
+    # Get list of repositories in the merged dataframe
+    repo_names = merged_df['Repo'].tolist()
+
+    for repo_name in repo_names:
+        # Get repository traffic views
+        views_response = requests.get(f'https://api.github.com/repos/{username}/{repo_name}/traffic/views', auth=(username, token))
+        views_data = views_response.json()
+        total_views = sum([view['count'] for view in views_data['views']])
+        views.append(total_views)
+
+        # Get repository stars
+        stars_response = requests.get(f'https://api.github.com/repos/{username}/{repo_name}', auth=(username, token))
+        stars_data = stars_response.json()
+        total_stars = stars_data['stargazers_count']
+        stars.append(total_stars)
+
+    # Add views and stars to the dataframe
+    merged_df['Views'] = views
+    merged_df['Stars'] = stars
+
+    return merged_df
+
+
+
+
 
 
 
@@ -189,13 +231,12 @@ def main():
     token = os.getenv('GITHUB_TOKEN')
 
     df_delete_add_line = get_commit_stats(username, token)
-    print(df_delete_add_line)
     df_repo_language = get_repo_languages(username, token)
-    print(df_repo_language)
     df_view_star_date = get_repo_views_stars(username, token)
-    print(df_view_star_date)
     df_author_repo_collaborators = get_author_repo_collaborators(username, token)
-    print(df_author_repo_collaborators)
+
+
+    df_global_repo = merge_and_add_info(username, token, df_repo_language, df_author_repo_collaborators)
 
 
 
@@ -235,7 +276,9 @@ def main():
 
 
 
+    ## load the data into the redshift database for the global repo without append
 
+    pr.pandas_to_redshift(data_frame=df_global_repo, redshift_table_name='global_repo', append=False)
 
     pr.close_up_shop()
     return "Success"
