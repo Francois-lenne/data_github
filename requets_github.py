@@ -7,6 +7,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import datetime, timedelta
 import pandas as pd
+import pandas_redshift as pr
 
 
 
@@ -180,17 +181,52 @@ def get_author_repo_collaborators(username, token):
 
 
 def main():
+
+
+
+   # retrieve the data from the github api 
     username = 'Francois-lenne'
     token = os.getenv('GITHUB_TOKEN')
 
-    df_delete_add = get_commit_stats(username, token)
+    df_delete_add_line = get_commit_stats(username, token)
+    print(df_delete_add_line)
     df_repo_language = get_repo_languages(username, token)
+    print(df_repo_language)
     df_view_star = get_repo_views_stars(username, token)
+    print(df_view_star)
     df_author_repo_collaborators = get_author_repo_collaborators(username, token)
+    print(df_author_repo_collaborators)
+
+
+
+    # load the data into the redshift database
+
+
+    # information for AWS redshift
+
+    dbname = os.getenv('REDSHIFT_DBNAME')
+    host = os.getenv('REDSHIFT_HOST')
+    port = os.getenv('REDSHIFT_PORT')
+    user = os.getenv('REDSHIFT_USER')
+    password = os.getenv('REDSHIFT_PASSWORD')
+
+    # information for AWS S3
+
+    bucket = os.getenv('S3_BUCKET')
+    subdirectory = os.getenv('S3_SUBDIRECTORY')
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+
+
+
+    pr.connect_to_redshift(dbname='dbname', host='host', port='port', user='user', password='password')
+    pr.connect_to_s3(bucket='bucket', subdirectory='subdirectory', aws_access_key_id='aws_access_key_id', aws_secret_access_key = "rrr")
 
 
 
 
+
+    pr.close_up_shop()
     return "Success"
 
 
@@ -198,3 +234,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
