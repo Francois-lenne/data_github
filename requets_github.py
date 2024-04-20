@@ -8,7 +8,8 @@ from urllib3.util.retry import Retry
 from datetime import datetime, timedelta
 import pandas as pd
 import pandas_redshift as pr
-import creds # in local i create a file creds.py with the environement variable that i import
+import boto3
+import json
 
 
 
@@ -220,7 +221,18 @@ def merge_and_add_info(username, token, df_repo_language, df_author_repo_collabo
 
 
 
+# retrieve the secrets from the AWS secret manager
 
+def get_secret(secret_name):
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name='us-east-1'  # Remplacez par votre région AWS
+    )
+
+    response = client.get_secret_value(SecretId=secret_name)
+    secret = json.loads(response['SecretString'])
+    return secret
 
 
 
@@ -231,9 +243,15 @@ def main():
 
 
 
+    # get the secret from the AWS secret manager
+
+    secrets = get_secret('MySecrets')
+
+
+
    # retrieve the data from the github api 
     username = 'Francois-lenne'
-    token = os.getenv('GITHUB_TOKEN')
+    token = secrets['GITHUB_TOKEN']
 
     print(token)
 
@@ -263,18 +281,18 @@ def main():
 
     # information for AWS redshift
 
-    dbname = os.getenv('REDSHIFT_DBNAME')
-    host = os.getenv('REDSHIFT_HOST')
-    port = os.getenv('REDSHIFT_PORT')
-    user = os.getenv('REDSHIFT_USER')
-    password = os.getenv('REDSHIFT_PASSWORD')
+    dbname = secrets['REDSHIFT_DBNAME']
+    host = secrets['REDSHIFT_HOST']
+    port = secrets['REDSHIFT_PORT']
+    user = secrets['REDSHIFT_USER']
+    password = secrets['REDSHIFT_PASSWORD']
 
     # information for AWS S3
 
-    bucket = os.getenv('S3_BUCKET')
-    subdirectory = os.getenv('S3_SUBDIRECTORY')
-    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    bucket = secrets['S3_BUCKET']
+    subdirectory = secrets['S3_SUBDIRECTORY']
+    aws_access_key_id = secrets['AWS_ACCESS_KEY_ID']
+    aws_secret_access_key = secrets['AWS_SECRET_ACCESS_KEY']
 
 
 
